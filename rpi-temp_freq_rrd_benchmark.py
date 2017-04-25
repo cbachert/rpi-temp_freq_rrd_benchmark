@@ -9,14 +9,17 @@ import re
 path_rrd = 'rpi-temp_freq.rrd'
 path_rrd_export = 'rpi-temp_freq.png'
 
-rrd_length = 100
+rrd_length = 3600
 rrd_intro_length = 30
-rrd_outro_length = 30
+rrd_outro_length = 1800
 rrd_res = 1
 
 rrd_datapoints = rrd_length / rrd_res
 rrd_datapoints_intro = rrd_intro_length / rrd_res
 rrd_datapoints_outro = rrd_outro_length / rrd_res
+
+rrd_width = 1920
+rrd_heigth = 1080
 
 path_cpu_temp = '/sys/class/thermal/thermal_zone0/temp'
 path_cpu_freq = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq'
@@ -40,6 +43,9 @@ rrdtool.create( path_rrd,
 
 def collect_data(datapoints):
   for i in range(1, datapoints+1):
+    # record time to get the runtime of the loop and to keep the timing correct
+    loop_start_time = time.time()
+    
     # get CPU temperature
     file_cpu_temp = open(path_cpu_temp, 'r')
     cpu_temp = float(file_cpu_temp.readline().rstrip())/1000
@@ -60,7 +66,7 @@ def collect_data(datapoints):
   
     rrdtool.update(path_rrd, 'N:%s:%s:%s' %(gpu_temp, cpu_temp, cpu_freq))
 
-    time.sleep(rrd_res)
+    time.sleep(rrd_res - (time.time() - loop_start_time))
 
 print rrd_datapoints_intro
 print rrd_datapoints-(rrd_datapoints_intro+rrd_datapoints_outro)
@@ -73,8 +79,8 @@ collect_data(rrd_datapoints_outro)
 
 rrdtool.graph(path_rrd_export,
               '--imgformat', 'PNG',
-              '--width', '960',
-              '--height', '540',
+              '--width', str(rrd_width),
+              '--height', str(rrd_heigth),
               '--start', str(epoch_time),
               '--end', "-1",
               '--vertical-label', 'Temperature in C',
